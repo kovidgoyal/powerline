@@ -185,7 +185,7 @@ def _external_ip(query_url='http://ipv4.icanhazip.com/'):
 
 
 class ExternalIpSegment(ThreadedSegment):
-	interval = 10
+	interval = 60
 	update_first=False
 
 	def set_state(self, query_url='http://ipv4.icanhazip.com/', **kwargs):
