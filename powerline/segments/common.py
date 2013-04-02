@@ -37,84 +37,30 @@ def hostname(pl, segment_info, only_if_ssh=False, exclude_domain=False):
 
 
 @requires_segment_info
-class RepositorySegment(KwThreadedSegment):
-	def __init__(self):
-		super(RepositorySegment, self).__init__()
-		self.directories = {}
+def branch(pl, segment_info, status_colors=False):
+	'''Return the current VCS branch.
 
-	@staticmethod
-	def key(segment_info, **kwargs):
-		return os.path.abspath(segment_info['getcwd']())
+	:param bool status_colors:
+		determines whether repository status will be used to determine highlighting. Default: True.
 
-	def update(self, *args):
-		# .compute_state() is running only in this method, and only in one
-		# thread, thus operations with .directories do not need write locks
-		# (.render() method is not using .directories). If this is changed
-		# .directories needs redesigning
-		self.directories.clear()
-		return super(RepositorySegment, self).update(*args)
-
-	def compute_state(self, path):
-		repo = guess(path=path)
-		if repo:
-			if repo.directory in self.directories:
-				return self.directories[repo.directory]
-			else:
-				r = self.process_repo(repo)
-				self.directories[repo.directory] = r
-				return r
-
-
-class RepositoryStatusSegment(RepositorySegment):
-	interval = 2
-
-	@staticmethod
-	def process_repo(repo):
-		return repo.status()
-
-
-repository_status = with_docstring(RepositoryStatusSegment(),
-'''Return the status for the current VCS repository.''')
-
-
-class BranchSegment(RepositorySegment):
-	interval = 0.2
-	started_repository_status = False
-
-	@staticmethod
-	def process_repo(repo):
-		return repo.branch()
-
-	@staticmethod
-	def render_one(branch, status_colors=False, **kwargs):
-		if branch and status_colors:
-			return [{
-				'contents': branch,
-				'highlight_group': ['branch_dirty' if repository_status(**kwargs) else 'branch_clean', 'branch'],
-			}]
-		else:
-			return branch
-
-	def startup(self, status_colors=False, **kwargs):
-		super(BranchSegment, self).startup(**kwargs)
-		if status_colors:
-			self.started_repository_status = True
-			repository_status.startup(**kwargs)
-
-	def shutdown(self):
-		if self.started_repository_status:
-			repository_status.shutdown()
-		super(BranchSegment, self).shutdown()
-
-
-branch = with_docstring(BranchSegment(),
-'''Return the current VCS branch.
-
-:param bool status_colors:
-	determines whether repository status will be used to determine highlighting. Default: True.
-
-Highlight groups used: ``branch_clean``, ``branch_dirty``, ``branch``.
-''')
+	Highlight groups used: ``branch_clean``, ``branch_dirty``, ``branch``.
+	'''
+	name = segment_info['getcwd']()
+	repo = guess(path=name)
+	if repo is not None:
+		branch = repo.branch()
+		status = None
+		if False and status_colors:
+			# TODO: Write a tree watcher to make the performance of
+			# status_colors acceptable.
+			status = branch.status()
+			if status:
+				status = status.strip()
+		return [{
+			'contents': branch,
+			'highlight_group': (['branch_dirty' if status else 'branch_clean']
+								if status_colors else []) + ['branch'],
+		}]
 
 
 @requires_segment_info

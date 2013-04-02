@@ -13,7 +13,8 @@ vcs_props = (
 
 
 def generate_directories(path):
-	yield path
+	if os.path.isdir(path):
+		yield path
 	while True:
 		old_path = path
 		path = os.path.dirname(path)

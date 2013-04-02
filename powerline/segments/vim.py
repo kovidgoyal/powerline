@@ -13,7 +13,6 @@ from powerline.theme import requires_segment_info
 from powerline.lib import add_divider_highlight_group
 from powerline.lib.vcs import guess
 from powerline.lib.humanize_bytes import humanize_bytes
-from powerline.lib.threaded import KwThreadedSegment, with_docstring
 from powerline.lib import wraps_saveargs as wraps
 from collections import defaultdict
 
@@ -198,7 +197,7 @@ def file_size(pl, suffix='B', si_prefix=False):
 		use SI prefix, e.g. MB instead of MiB
 	:return: file size or None if the file isn't saved or if the size is too big to fit in a number
 	'''
-	# Note: returns file size in &encoding, not in &fileencoding. But returned 
+	# Note: returns file size in &encoding, not in &fileencoding. But returned
 	# size is updated immediately; and it is valid for any buffer
 	file_size = vim_funcs['line2byte'](len(vim.current.buffer) + 1) - 1
 	return humanize_bytes(file_size, suffix, si_prefix)
@@ -298,104 +297,36 @@ def modified_buffers(pl, text='+ ', join_str=','):
 		return text + join_str.join(buffer_mod)
 	return None
 
-
-class KwWindowThreadedSegment(KwThreadedSegment):
-	def set_state(self, **kwargs):
-		kwargs = kwargs.copy()
-		for window in vim.windows:
-			buffer = window.buffer
-			kwargs['segment_info'] = {'bufnr': buffer.number, 'buffer': buffer}
-			super(KwWindowThreadedSegment, self).set_state(**kwargs)
-
-
-class RepositorySegment(KwWindowThreadedSegment):
-	def __init__(self):
-		super(RepositorySegment, self).__init__()
-		self.directories = {}
-
-	@staticmethod
-	def key(segment_info, **kwargs):
-		# FIXME os.getcwd() is not a proper variant for non-current buffers
-		return segment_info['buffer'].name or os.getcwd()
-
-	def update(self, *args):
-		# .compute_state() is running only in this method, and only in one 
-		# thread, thus operations with .directories do not need write locks 
-		# (.render() method is not using .directories). If this is changed 
-		# .directories needs redesigning
-		self.directories.clear()
-		return super(RepositorySegment, self).update(*args)
-
-	def compute_state(self, path):
-		repo = guess(path=path)
-		if repo:
-			if repo.directory in self.directories:
-				return self.directories[repo.directory]
-			else:
-				r = self.process_repo(repo)
-				self.directories[repo.directory] = r
-				return r
-
-
 @requires_segment_info
-class RepositoryStatusSegment(RepositorySegment):
-	interval = 2
+def branch(pl, segment_info, status_colors=False):
+	'''Return the current working branch.
 
-	@staticmethod
-	def process_repo(repo):
-		return repo.status()
+	:param bool status_colors:
+		determines whether repository status will be used to determine highlighting. Default: False.
 
+	Highlight groups used: ``branch_clean``, ``branch_dirty``, ``branch``.
 
-repository_status = with_docstring(RepositoryStatusSegment(),
-'''Return the status for the current repo.''')
-
-
-@requires_segment_info
-class BranchSegment(RepositorySegment):
-	interval = 0.2
-	started_repository_status = False
-
-	@staticmethod
-	def process_repo(repo):
-		return repo.branch()
-
-	def render_one(self, branch, segment_info, status_colors=False, **kwargs):
-		if not branch:
-			return None
-
-		if status_colors:
-			self.started_repository_status = True
-
-		return [{
-			'contents': branch,
-			'highlight_group': (['branch_dirty' if repository_status(segment_info=segment_info, **kwargs) else 'branch_clean']
-								if status_colors else []) + ['branch'],
-			'divider_highlight_group': 'branch:divider',
-		}]
-
-	def startup(self, status_colors=False, **kwargs):
-		super(BranchSegment, self).startup(**kwargs)
-		if status_colors:
-			self.started_repository_status = True
-			repository_status.startup(**kwargs)
-
-	def shutdown(self):
-		if self.started_repository_status:
-			repository_status.shutdown()
-		super(BranchSegment, self).shutdown()
-
-
-branch = with_docstring(BranchSegment(),
-'''Return the current working branch.
-
-:param bool status_colors:
-	determines whether repository status will be used to determine highlighting. Default: False.
-
-Highlight groups used: ``branch_clean``, ``branch_dirty``, ``branch``.
-
-Divider highlight group used: ``branch:divider``.
-''')
-
+	Divider highlight group used: ``branch:divider``.
+	'''
+	name = segment_info['buffer'].name
+	skip = not (name and (not getbufvar(segment_info['bufnr'], '&buftype')))
+	if not skip:
+		repo = guess(path=name)
+		if repo is not None:
+			branch = repo.branch()
+			status = None
+			if False and status_colors:
+				# TODO: Write a tree watcher to make the performance of
+				# status_colors acceptable.
+				status = branch.status()
+				if status:
+					status = status.strip()
+			return [{
+				'contents': branch,
+				'highlight_group': (['branch_dirty' if status else 'branch_clean']
+									if status_colors else []) + ['branch'],
+				'divider_highlight_group': 'branch:divider',
+			}]
 
 @requires_segment_info
 def file_vcs_status(pl, segment_info):
