@@ -158,8 +158,7 @@ class INotify(object):
 			pos += self.hdr.size
 			name = None
 			if get_name:
-				name = raw[pos:pos+name_len].rstrip(b'\0')
-			# We dont care about names as we only watch files
+				name = raw[pos:pos+name_len].rstrip(b'\0').decode(self.fenc)
 			pos += name_len
 			self.process_event(wd, mask, cookie, name)
 
