@@ -128,6 +128,18 @@ class INotifyWatch(object):
 				self.unwatch(path)
 
 	def process_event(self, wd, mask, cookie):
+		if wd == -1 and mask & self.Q_OVERFLOW:
+			# We missed some INOTIFY events, so we dont
+			# know the state of any tracked files.
+			for path in tuple(self.modified):
+				if os.path.exists(path):
+					self.modified[path] = True
+				else:
+					self.watches.pop(path, None)
+					self.modified.pop(path, None)
+					self.last_query.pop(path, None)
+			return
+
 		for path, num in tuple(self.watches.items()):
 			if num == wd:
 				if mask & self.IGNORED:
