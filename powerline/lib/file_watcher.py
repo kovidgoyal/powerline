@@ -9,7 +9,7 @@ import sys
 from time import sleep
 from threading import RLock
 
-from powerline.lib.time import monotonic
+from powerline.lib.monotonic import monotonic
 from powerline.lib.inotify import INotify, INotifyError
 
 class INotifyWatch(INotify):

@@ -1,7 +1,7 @@
 # vim:fileencoding=utf-8:noet
 
 from functools import wraps
-from powerline.lib.time import monotonic
+from powerline.lib.monotonic import monotonic
 
 
 def default_cache_key(**kwargs):
@@ -28,8 +28,8 @@ class memoize(object):
 				cached = self.cache.get(key, None)
 			except TypeError:
 				return func(**kwargs)
-			# Handle case when time() appears to be less then cached['time'] due 
-			# to clock updates. Not applicable for monotonic clock, but this 
+			# Handle case when time() appears to be less then cached['time'] due
+			# to clock updates. Not applicable for monotonic clock, but this
 			# case is currently rare.
 			if cached is None or not (cached['time'] < monotonic() < cached['time'] + self.timeout):
 				cached = self.cache[key] = {
