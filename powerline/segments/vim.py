@@ -298,7 +298,7 @@ def modified_buffers(pl, text='+ ', join_str=','):
 	return None
 
 @requires_segment_info
-def branch(pl, segment_info, status_colors=False):
+def branch(pl, segment_info, status_colors=True):
 	'''Return the current working branch.
 
 	:param bool status_colors:
@@ -314,17 +314,14 @@ def branch(pl, segment_info, status_colors=False):
 		repo = guess(path=name)
 		if repo is not None:
 			branch = repo.branch()
-			status = None
-			if False and status_colors:
-				# TODO: Write a tree watcher to make the performance of
-				# status_colors acceptable.
-				status = branch.status()
-				if status:
-					status = status.strip()
+			scol = ['branch']
+			if status_colors:
+				from powerline.lib.vcs import tree_status
+				status = tree_status(repo, pl)
+				scol.insert(0, 'branch_dirty' if status and status.strip() else 'branch_clean')
 			return [{
 				'contents': branch,
-				'highlight_group': (['branch_dirty' if status else 'branch_clean']
-									if status_colors else []) + ['branch'],
+				'highlight_group': scol,
 				'divider_highlight_group': 'branch:divider',
 			}]
 

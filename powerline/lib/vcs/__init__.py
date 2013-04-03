@@ -146,6 +146,35 @@ def get_file_status(directory, dirstate_file, file_path, ignore_file_name, get_f
 			file_status_cache[keypath] = ans = get_func(directory, file_path)
 			return ans
 
+class TreeStatusCache(dict):
+
+	def __init__(self):
+		from powerline.lib.tree_watcher import TreeWatcher
+		self.tw = TreeWatcher()
+
+	def cache_and_get(self, key, status):
+		ans = self.get(key, self)
+		if ans is self:
+			ans = self[key] = status()
+		return ans
+
+	def __call__(self, repo, logger):
+		key = repo.directory
+		try:
+			if self.tw(key):
+				self.pop(key, None)
+		except OSError as e:
+			logger.warn('Failed to check %s for changes, with error: %s'% key, e)
+		return self.cache_and_get(key, repo.status)
+
+_tree_status_cache = None
+
+def tree_status(repo, logger):
+	global _tree_status_cache
+	if _tree_status_cache is None:
+		_tree_status_cache = TreeStatusCache()
+	return _tree_status_cache(repo, logger)
+
 def guess(path):
 	for directory in generate_directories(path):
 		for vcs, vcs_dir, check in vcs_props:
