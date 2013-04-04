@@ -15,6 +15,12 @@ def load_inotify():
 	''' Initialize the inotify library '''
 	global _inotify
 	if _inotify is None:
+		if hasattr(sys, 'getwindowsversion'):
+			# On windows abort before loading the C library. Windows has
+			# multiple, incompatible C runtimes, and we have no way of knowing
+			# if the one chosen by ctypes is compatible with the currently
+			# loaded one.
+			raise INotifyError('INotify not available on windows')
 		import ctypes
 		if not hasattr(ctypes, 'c_ssize_t'):
 			raise INotifyError('You need python >= 2.7 to use inotify')
