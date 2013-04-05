@@ -28,8 +28,8 @@ class ThreadedSegment(object):
 			self.set_state(**kwargs)
 			update_value = self.get_update_value(True)
 		elif not self.is_alive():
-			# Without this we will not have to wait long until receiving bug “I
-			# opened vim, but branch information is only shown after I move
+			# Without this we will not have to wait long until receiving bug “I 
+			# opened vim, but branch information is only shown after I move 
 			# cursor”.
 			#
 			# If running once .update() is called in __call__.
@@ -77,14 +77,13 @@ class ThreadedSegment(object):
 	def shutdown(self):
 		self.shutdown_event.set()
 		if self.daemon and self.is_alive():
-			# Give the worker thread a change to shutdown, but dont block
-			# for too long
-			self.thread.join(0.01)
+			# Give the worker thread a chance to shutdown, but don't block for too long
+			self.thread.join(.01)
 
 	def set_interval(self, interval=None):
 		# Allowing “interval” keyword in configuration.
-		# Note: Here **kwargs is needed to support foreign data, in subclasses
-		# it can be seen in a number of places in order to support
+		# Note: Here **kwargs is needed to support foreign data, in subclasses 
+		# it can be seen in a number of places in order to support 
 		# .set_interval().
 		interval = interval or getattr(self, 'interval')
 		self.interval = interval
@@ -102,15 +101,6 @@ class ThreadedSegment(object):
 
 		if not self.is_alive():
 			self.start()
-
-	def critical(self, *args, **kwargs):
-		self.pl.critical(prefix=self.__class__.__name__, *args, **kwargs)
-
-	def exception(self, *args, **kwargs):
-		self.pl.exception(prefix=self.__class__.__name__, *args, **kwargs)
-
-	def info(self, *args, **kwargs):
-		self.pl.info(prefix=self.__class__.__name__, *args, **kwargs)
 
 	def error(self, *args, **kwargs):
 		self.pl.error(prefix=self.__class__.__name__, *args, **kwargs)
@@ -153,7 +143,7 @@ class KwThreadedSegment(ThreadedSegment):
 		try:
 			update_state = queries[key][1]
 		except KeyError:
-			# Allow only to forbid to compute missing values: in either user
+			# Allow only to forbid to compute missing values: in either user 
 			# configuration or in subclasses.
 			update_state = self.compute_state(key) if ((update_first and self.update_first) or self.run_once) else None
 
