@@ -341,7 +341,7 @@ class WeatherSegment(ThreadedSegment):
 		raw_response = urllib_read(self.url)
 		if not raw_response:
 			self.error('Failed to get response')
-			return
+			return self.update_value
 		response = json.loads(raw_response)
 		condition = response['query']['results']['weather']['rss']['channel']['item']['condition']
 		condition_code = int(condition['code'])
