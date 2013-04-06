@@ -682,14 +682,15 @@ class NetworkLoadSegment(KwThreadedSegment):
 
 		if None in (b1, b2):
 			return None
-		if measure_interval == 0:
-			self.error('Measure interval is zero. This should not happen')
-			return None
 
 		r = []
 		for i, key in zip((0, 1), ('recv', 'sent')):
 			format = locals()[key + '_format']
-			value = (b2[i] - b1[i]) / measure_interval
+			try:
+				value = (b2[i] - b1[i]) / measure_interval
+			except ZeroDivisionError:
+				self.warn('Measure interval zero.')
+				value = 0
 			max_key = key + '_max'
 			is_gradient = max_key in kwargs
 			hl_groups = ['network_load_' + key, 'network_load']
