@@ -59,7 +59,7 @@ class FileStatusCache(dict):
 		self.ignore_map = defaultdict(set)
 		self.keypath_ignore_map = {}
 
-	def update_maps(self, keypath, directory, dirstate_file, ignore_file_name):
+	def update_maps(self, keypath, directory, dirstate_file, ignore_file_name, extra_ignore_files):
 		parent = keypath
 		ignore_files = set()
 		while parent != directory:
@@ -68,6 +68,8 @@ class FileStatusCache(dict):
 				break
 			parent = nparent
 			ignore_files.add(os.path.join(parent, ignore_file_name))
+		for f in extra_ignore_files:
+			ignore_files.add(os.path.join(directory, *f.split('/')))
 		self.keypath_ignore_map[keypath] = ignore_files
 		for ignf in ignore_files:
 			self.ignore_map[ignf].add(keypath)
@@ -85,10 +87,10 @@ class FileStatusCache(dict):
 
 file_status_cache = FileStatusCache()
 
-def get_file_status(directory, dirstate_file, file_path, ignore_file_name, get_func):
+def get_file_status(directory, dirstate_file, file_path, ignore_file_name, get_func, extra_ignore_files=()):
 	global file_status_cache
 	keypath = file_path if os.path.isabs(file_path) else os.path.join(directory, file_path)
-	file_status_cache.update_maps(keypath, directory, dirstate_file, ignore_file_name)
+	file_status_cache.update_maps(keypath, directory, dirstate_file, ignore_file_name, extra_ignore_files)
 
 	with file_status_lock:
 		# Optimize case of keypath not being cached
