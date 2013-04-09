@@ -193,7 +193,7 @@ class Powerline(object):
 					},
 				)
 
-				if not self.run_once and self.common_config.get('reload_config', True):
+				if False and not self.run_once and self.common_config.get('reload_config', True):
 					interval = self.common_config.get('interval', None)
 					self.config_loader.set_interval(interval)
 					self.run_loader_update = (interval is None)
