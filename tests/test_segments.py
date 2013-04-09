@@ -182,10 +182,10 @@ class TestCommon(TestCase):
 		with replace_attr(common, '_get_uptime', lambda: 259200):
 			self.assertEqual(common.uptime(pl=pl), [{'contents': '3d', 'divider_highlight_group': 'background:divider'}])
 		with replace_attr(common, '_get_uptime', lambda: 93784):
-			self.assertEqual(common.uptime(pl=pl), [{'contents': '1d 2h 3m', 'divider_highlight_group': 'background:divider'}])
+			self.assertEqual(common.uptime(pl=pl, shorten_len=3), [{'contents': '1d 2h 3m', 'divider_highlight_group': 'background:divider'}])
 			self.assertEqual(common.uptime(pl=pl, shorten_len=4), [{'contents': '1d 2h 3m 4s', 'divider_highlight_group': 'background:divider'}])
 		with replace_attr(common, '_get_uptime', lambda: 65536):
-			self.assertEqual(common.uptime(pl=pl), [{'contents': '18h 12m 16s', 'divider_highlight_group': 'background:divider'}])
+			self.assertEqual(common.uptime(pl=pl, shorten_len=3), [{'contents': '18h 12m 16s', 'divider_highlight_group': 'background:divider'}])
 			self.assertEqual(common.uptime(pl=pl, shorten_len=2), [{'contents': '18h 12m', 'divider_highlight_group': 'background:divider'}])
 			self.assertEqual(common.uptime(pl=pl, shorten_len=1), [{'contents': '18h', 'divider_highlight_group': 'background:divider'}])
 
@@ -247,7 +247,16 @@ class TestCommon(TestCase):
 	def test_cpu_load_percent(self):
 		pl = Pl()
 		with replace_module_module(common, 'psutil', cpu_percent=lambda **kwargs: 52.3):
-			self.assertEqual(common.cpu_load_percent(pl=pl), '52%')
+			self.assertEqual(common.cpu_load_percent(pl=pl), [{
+				'contents': '52%',
+				'gradient_level': 52.3,
+				'highlight_group': ['cpu_load_percent_gradient', 'cpu_load_percent'],
+			}])
+			self.assertEqual(common.cpu_load_percent(pl=pl, format='{0:.1f}%'), [{
+				'contents': '52.3%',
+				'gradient_level': 52.3,
+				'highlight_group': ['cpu_load_percent_gradient', 'cpu_load_percent'],
+			}])
 
 	def test_network_load(self):
 		from time import sleep
