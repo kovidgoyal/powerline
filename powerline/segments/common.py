@@ -704,7 +704,7 @@ class NetworkLoadSegment(KwThreadedSegment):
 			self.interfaces[interface] = idata
 
 		idata['last'] = (monotonic(), _get_bytes(interface))
-		return idata
+		return idata.copy()
 
 	def render_one(self, idata, recv_format='⬇ {value:>8}', sent_format='⬆ {value:>8}', suffix='B/s', si_prefix=False, **kwargs):
 		if not idata or 'prev' not in idata:
