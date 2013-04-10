@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# vim:fileencoding=UTF-8:noet
+# vim:fileencoding=utf-8:noet
 from __future__ import (unicode_literals, absolute_import, print_function)
 
 __copyright__ = '2013, Kovid Goyal <kovid at kovidgoyal.net>'
