@@ -132,7 +132,7 @@ class TestVCS(TestCase):
 			ans = repo.branch()
 			if ans == q:
 				break
-			time.sleep(0.1)
+			time.sleep(0.01)
 		self.assertEqual(ans, q)
 
 	def test_git(self):
@@ -159,16 +159,15 @@ class TestVCS(TestCase):
 		call(['git', 'branch', 'branch1'], cwd=GIT_REPO)
 		call(['git', 'checkout', '-q', 'branch1'], cwd=GIT_REPO)
 		self.do_branch_rename_test(repo, 'branch1')
-		if 'TRAVIS' not in os.environ:
-			# For some reason the rest of this test fails on travis and only on
-			# travis, and I can't figure out why
-			call(['git', 'branch', 'branch2'], cwd=GIT_REPO)
-			call(['git', 'checkout', '-q', 'branch2'], cwd=GIT_REPO)
-			self.do_branch_rename_test(repo, 'branch2')
-			call(['git', 'checkout', '-q', '--detach', 'branch1'], cwd=GIT_REPO)
-			self.do_branch_rename_test(repo, '[DETACHED HEAD]')
-		else:
+		# For some reason the rest of this test fails on travis and only on
+		# travis, and I can't figure out why
+		if 'TRAVIS' in os.environ:
 			raise SkipTest('Part of this test fails on Travis for unknown reasons')
+		call(['git', 'branch', 'branch2'], cwd=GIT_REPO)
+		call(['git', 'checkout', '-q', 'branch2'], cwd=GIT_REPO)
+		self.do_branch_rename_test(repo, 'branch2')
+		call(['git', 'checkout', '-q', '--detach', 'branch1'], cwd=GIT_REPO)
+		self.do_branch_rename_test(repo, '[DETACHED HEAD]')
 
 	if use_mercurial:
 		def test_mercurial(self):
@@ -232,6 +231,30 @@ class TestVCS(TestCase):
 			# Test changing branch
 			call(['bzr', 'nick', 'branch1'], cwd=BZR_REPO, stdout=PIPE, stderr=PIPE)
 			self.do_branch_rename_test(repo, 'branch1')
+
+			# Test branch name/status changes when swapping repos
+			for x in ('b1', 'b2'):
+				d = os.path.join(BZR_REPO, x)
+				os.mkdir(d)
+				call(['bzr', 'init', '-q'], cwd=d)
+				call(['bzr', 'nick', '-q', x], cwd=d)
+				repo = guess(path=d)
+				self.assertEqual(repo.branch(), x)
+				self.assertFalse(repo.status())
+				if x == 'b1':
+					open(os.path.join(d, 'dirty'), 'w').close()
+					self.assertTrue(repo.status())
+			os.rename(os.path.join(BZR_REPO, 'b1'), os.path.join(BZR_REPO, 'b'))
+			os.rename(os.path.join(BZR_REPO, 'b2'), os.path.join(BZR_REPO, 'b1'))
+			os.rename(os.path.join(BZR_REPO, 'b'), os.path.join(BZR_REPO, 'b2'))
+			for x, y in (('b1', 'b2'), ('b2', 'b1')):
+				d = os.path.join(BZR_REPO, x)
+				repo = guess(path=d)
+				self.do_branch_rename_test(repo, y)
+				if x == 'b1':
+					self.assertFalse(repo.status())
+				else:
+					self.assertTrue(repo.status())
 
 old_HGRCPATH = None
 old_cwd = None

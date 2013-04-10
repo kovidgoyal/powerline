@@ -38,18 +38,31 @@ file_status_lock = Lock()
 def get_branch_name(directory, config_file, get_func):
 	global branch_name_cache
 	with branch_lock:
+		# Check if the repo directory was moved/deleted
 		try:
-			changed = file_watcher()(config_file)
+			changed = file_watcher()(directory)
 		except OSError as e:
 			if getattr(e, 'errno', None) != errno.ENOENT:
 				raise
-			# Config file does not exist (happens for mercurial)
-			if config_file not in branch_name_cache:
-				branch_name_cache[config_file] = get_func(directory, config_file)
+			changed = True
+		if changed:
+			branch_name_cache.pop(config_file, None)
+			# Remove the watches for this repo
+			file_watcher().unwatch(directory)
+			file_watcher().unwatch(config_file)
 		else:
-			if changed:
-				# Config file has changed or was not tracked
-				branch_name_cache[config_file] = get_func(directory, config_file)
+			# Check if the config file has changed
+			try:
+				changed = file_watcher()(config_file)
+			except OSError as e:
+				if getattr(e, 'errno', None) != errno.ENOENT:
+					raise
+				# Config file does not exist (happens for mercurial)
+				if config_file not in branch_name_cache:
+					branch_name_cache[config_file] = get_func(directory, config_file)
+		if changed:
+			# Config file has changed or was not tracked
+			branch_name_cache[config_file] = get_func(directory, config_file)
 		return branch_name_cache[config_file]
 
 class FileStatusCache(dict):
