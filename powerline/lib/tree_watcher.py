@@ -17,7 +17,8 @@ class NoSuchDir(ValueError):
 class DirTooLarge(ValueError):
 
 	def __init__(self, bdir):
-		ValueError.__init__(self, 'The directory %s is too large to monitor. Try increasing the value in /proc/sys/fs/inotify/max_user_watches'%bdir)
+		ValueError.__init__(self,
+			'The directory %s is too large to monitor. Try increasing the value in /proc/sys/fs/inotify/max_user_watches' % bdir)
 
 class INotifyTreeWatcher(INotify):
 
@@ -49,13 +50,13 @@ class INotifyTreeWatcher(INotify):
 				# The entry could have been deleted between listdir() and
 				# add_watch().
 				if top_level:
-					raise NoSuchDir('The dir %s does not exist'%base)
+					raise NoSuchDir('The dir %s does not exist' % base)
 				return
 			if e.errno == errno.EACCES:
 				# We silently ignore entries for which we dont have permission,
 				# unless they are the top level dir
 				if top_level:
-					raise NoSuchDir('You do not have permission to monitor %s'%base)
+					raise NoSuchDir('You do not have permission to monitor %s' % base)
 				return
 			raise
 		else:
@@ -67,20 +68,20 @@ class INotifyTreeWatcher(INotify):
 						# The dir was deleted/replaced between the add_watch()
 						# and listdir()
 						if top_level:
-							raise NoSuchDir('The dir %s does not exist'%base)
+							raise NoSuchDir('The dir %s does not exist' % base)
 						return
 					raise
 				for x in files:
 					self.add_watches(os.path.join(base, x), top_level=False)
 			elif top_level:
 				# The top level dir is a file, not good.
-				raise NoSuchDir('The dir %s does not exist'%base)
+				raise NoSuchDir('The dir %s does not exist' % base)
 
 	def add_watch(self, path):
 		import ctypes
 		bpath = path if isinstance(path, bytes) else path.encode(self.fenc)
 		wd = self._add_watch(self._inotify_fd, ctypes.c_char_p(bpath),
-				self.DONT_FOLLOW | self.ONLYDIR | # Ignore symlinks and watch only directories
+				self.DONT_FOLLOW | self.ONLYDIR |  # Ignore symlinks and watch only directories
 				self.MODIFY | self.CREATE | self.DELETE |
 				self.MOVE_SELF | self.MOVED_FROM | self.MOVED_TO |
 				self.ATTRIB | self.MOVE_SELF | self.DELETE_SELF)
@@ -88,7 +89,7 @@ class INotifyTreeWatcher(INotify):
 			eno = ctypes.get_errno()
 			if eno == errno.ENOTDIR:
 				return False
-			raise OSError(eno, 'Failed to add watch for: %s: %s'%(path, self.os.strerror(eno)))
+			raise OSError(eno, 'Failed to add watch for: %s: %s' % (path, self.os.strerror(eno)))
 		self.watched_dirs[path] = wd
 		self.watched_rmap[wd] = path
 		return True
@@ -145,7 +146,7 @@ class TreeWatcher(object):
 			w = INotifyTreeWatcher(path)
 		except (INotifyError, DirTooLarge) as e:
 			if logger is not None:
-				logger.warn('Failed to watch path: %s with error: %s'%(path, e))
+				logger.warn('Failed to watch path: %s with error: %s' % (path, e))
 			w = DummyTreeWatcher(path)
 		self.watches[path] = w
 		return w
@@ -193,5 +194,3 @@ if __name__ == '__main__':
 			sleep(1)
 	except KeyboardInterrupt:
 		raise SystemExit(0)
-
-
