@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 import powerline as powerline_module
 import time
-from tests import TestCase
+from tests import TestCase, skip
 from tests.lib import replace_item
 from tests.lib.config_mock import swap_attributes, get_powerline, pop_events
 from copy import deepcopy
@@ -103,7 +103,7 @@ def add_watcher_events(p, *args, **kwargs):
 		if not kwargs.get('wait', True):
 			return
 
-
+@skip('Config reloading is nuked')
 class TestConfigReload(TestCase):
 	def assertAccessEvents(self, *args):
 		self.assertEqual(set(pop_events()), set(args))
@@ -119,8 +119,8 @@ class TestConfigReload(TestCase):
 				self.assertEqual(p.render(), '<1 2 1> s<2 4 False>>><3 4 4>g<4 False False>>><None None None>')
 				self.assertAccessEvents()
 				self.assertEqual(p.logger._pop_msgs(), [])
-		# Without the following assertion test_reload_colors may fail for 
-		# unknown reason (with AssertionError telling about “config” accessed 
+		# Without the following assertion test_reload_colors may fail for
+		# unknown reason (with AssertionError telling about “config” accessed
 		# one more time then needed)
 		pop_events()
 
