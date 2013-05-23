@@ -8,10 +8,10 @@ try:
 except ImportError:
 	vim = {}  # NOQA
 
-from powerline.bindings.vim import vim_get_func, getbufvar
+from powerline.bindings.vim import vim_get_func, getbufvar, vim_getbufoption
 from powerline.theme import requires_segment_info
 from powerline.lib import add_divider_highlight_group
-from powerline.lib.vcs import guess
+from powerline.lib.vcs import guess, tree_status
 from powerline.lib.humanize_bytes import humanize_bytes
 from powerline.lib import wraps_saveargs as wraps
 from collections import defaultdict
@@ -49,29 +49,6 @@ vim_modes = {
 eventfuncs = defaultdict(lambda: [])
 bufeventfuncs = defaultdict(lambda: [])
 defined_events = set()
-
-
-def purgeonevents_reg(func, events, is_buffer_event=False):
-	if is_buffer_event:
-		cureventfuncs = bufeventfuncs
-	else:
-		cureventfuncs = eventfuncs
-	for event in events:
-		if event not in defined_events:
-			vim.eval('PowerlineRegisterCachePurgerEvent("' + event + '")')
-			defined_events.add(event)
-		cureventfuncs[event].append(func)
-
-
-def launchevent(event):
-	global eventfuncs
-	global bufeventfuncs
-	for func in eventfuncs[event]:
-		func()
-	if bufeventfuncs[event]:
-		buffer = vim.buffers[int(vim_funcs['expand']('<abuf>')) - 1]
-		for func in bufeventfuncs[event]:
-			func(buffer)
 
 
 # TODO Remove cache when needed
@@ -117,7 +94,7 @@ def modified_indicator(pl, segment_info, text='+'):
 	:param string text:
 		text to display if the current buffer is modified
 	'''
-	return text if int(getbufvar(segment_info['bufnr'], '&modified')) else None
+	return text if int(vim_getbufoption(segment_info, 'modified')) else None
 
 
 @requires_segment_info
@@ -137,7 +114,7 @@ def readonly_indicator(pl, segment_info, text=''):
 	:param string text:
 		text to display if the current buffer is read-only
 	'''
-	return text if int(getbufvar(segment_info['bufnr'], '&readonly')) else None
+	return text if int(vim_getbufoption(segment_info, 'readonly')) else None
 
 
 @requires_segment_info
@@ -197,7 +174,7 @@ def file_size(pl, suffix='B', si_prefix=False):
 		use SI prefix, e.g. MB instead of MiB
 	:return: file size or None if the file isn't saved or if the size is too big to fit in a number
 	'''
-	# Note: returns file size in &encoding, not in &fileencoding. But returned
+	# Note: returns file size in &encoding, not in &fileencoding. But returned 
 	# size is updated immediately; and it is valid for any buffer
 	file_size = vim_funcs['line2byte'](len(vim.current.buffer) + 1) - 1
 	return humanize_bytes(file_size, suffix, si_prefix)
@@ -212,7 +189,7 @@ def file_format(pl, segment_info):
 
 	Divider highlight group used: ``background:divider``.
 	'''
-	return getbufvar(segment_info['bufnr'], '&fileformat') or None
+	return vim_getbufoption(segment_info, 'fileformat') or None
 
 
 @requires_segment_info
@@ -224,7 +201,7 @@ def file_encoding(pl, segment_info):
 
 	Divider highlight group used: ``background:divider``.
 	'''
-	return getbufvar(segment_info['bufnr'], '&fileencoding') or None
+	return vim_getbufoption(segment_info, 'fileencoding') or None
 
 
 @requires_segment_info
@@ -236,7 +213,7 @@ def file_type(pl, segment_info):
 
 	Divider highlight group used: ``background:divider``.
 	'''
-	return getbufvar(segment_info['bufnr'], '&filetype') or None
+	return vim_getbufoption(segment_info, 'filetype') or None
 
 
 @requires_segment_info
@@ -318,14 +295,13 @@ def branch(pl, segment_info, status_colors=True):
 	Divider highlight group used: ``branch:divider``.
 	'''
 	name = segment_info['buffer'].name
-	skip = not (name and (not getbufvar(segment_info['bufnr'], '&buftype')))
+	skip = not (name and (not vim_getbufoption(segment_info, 'buftype')))
 	if not skip:
 		repo = guess(path=name)
 		if repo is not None:
 			branch = repo.branch()
 			scol = ['branch']
 			if status_colors:
-				from powerline.lib.vcs import tree_status
 				status = tree_status(repo, pl)
 				scol.insert(0, 'branch_dirty' if status and status.strip() else 'branch_clean')
 			return [{
@@ -341,7 +317,7 @@ def file_vcs_status(pl, segment_info):
 	Highlight groups used: ``file_vcs_status``.
 	'''
 	name = segment_info['buffer'].name
-	skip = not (name and (not getbufvar(segment_info['bufnr'], '&buftype')))
+	skip = not (name and (not vim_getbufoption(segment_info, 'buftype')))
 	if not skip:
 		repo = guess(path=name)
 		if repo is not None:

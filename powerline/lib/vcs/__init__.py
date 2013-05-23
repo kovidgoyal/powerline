@@ -82,7 +82,7 @@ class FileStatusCache(dict):
 			parent = nparent
 			ignore_files.add(os.path.join(parent, ignore_file_name))
 		for f in extra_ignore_files:
-			ignore_files.add(os.path.join(directory, *f.split('/')))
+			ignore_files.add(f)
 		self.keypath_ignore_map[keypath] = ignore_files
 		for ignf in ignore_files:
 			self.ignore_map[ignf].add(keypath)
@@ -193,7 +193,10 @@ def tree_status(repo, logger):
 def guess(path):
 	for directory in generate_directories(path):
 		for vcs, vcs_dir, check in vcs_props:
-			if check(os.path.join(directory, vcs_dir)):
+			repo_dir = os.path.join(directory, vcs_dir)
+			if check(repo_dir):
+				if os.path.isdir(repo_dir) and not os.access(repo_dir, os.X_OK):
+					continue
 				try:
 					if vcs not in globals():
 						globals()[vcs] = getattr(__import__('powerline.lib.vcs', fromlist=[vcs]), vcs)
@@ -201,3 +204,23 @@ def guess(path):
 				except:
 					pass
 	return None
+
+def debug():
+	''' To use run python -c "from powerline.lib.vcs import debug; debug()" some_file_to_watch '''
+	import sys
+	dest = sys.argv[-1]
+	repo = guess(dest)
+	if repo is None:
+		print ('%s is not a recognized vcs repo' % dest)
+		raise SystemExit(1)
+	print ('Watching %s' % dest)
+	print ('Press Ctrl-C to exit.')
+	try:
+		while True:
+			if os.path.isdir(dest):
+				print ('Branch name: %s Status: %s' % (repo.branch(), repo.status()))
+			else:
+				print ('File status: %s' % repo.status(dest))
+			raw_input('Press Enter to check again: ')
+	except KeyboardInterrupt:
+		pass

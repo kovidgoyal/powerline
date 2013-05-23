@@ -77,17 +77,19 @@ class TestCommon(TestCase):
 		pl = Pl()
 		segment_info = {'getcwd': os.getcwd}
 		with replace_attr(common, 'guess', lambda path: Args(branch=lambda: os.path.basename(path), status=lambda: None, directory='/tmp/tests')):
-			self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False),
-					[{'highlight_group': ['branch'], 'contents': 'tests'}])
-			self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=True),
-					[{'contents': 'tests', 'highlight_group': ['branch_clean', 'branch']}])
+			with replace_attr(common, 'tree_status', lambda repo, pl: None):
+				self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False),
+						[{'highlight_group': ['branch'], 'contents': 'tests'}])
+				self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=True),
+						[{'contents': 'tests', 'highlight_group': ['branch_clean', 'branch']}])
 		with replace_attr(common, 'guess', lambda path: Args(branch=lambda: os.path.basename(path), status=lambda: 'D  ', directory='/tmp/tests')):
-			self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False),
-					[{'highlight_group': ['branch'], 'contents': 'tests'}])
-			self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=True),
-					[{'contents': 'tests', 'highlight_group': ['branch_dirty', 'branch']}])
-			self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False),
-					[{'highlight_group': ['branch'], 'contents': 'tests'}])
+			with replace_attr(common, 'tree_status', lambda repo, pl: 'D '):
+				self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False),
+						[{'highlight_group': ['branch'], 'contents': 'tests'}])
+				self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=True),
+						[{'contents': 'tests', 'highlight_group': ['branch_dirty', 'branch']}])
+				self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False),
+						[{'highlight_group': ['branch'], 'contents': 'tests'}])
 		with replace_attr(common, 'guess', lambda path: None):
 			self.assertEqual(common.branch(pl=pl, segment_info=segment_info, status_colors=False), None)
 
@@ -330,6 +332,15 @@ class TestCommon(TestCase):
 			segment_info['environ'].pop('VIRTUAL_ENV')
 			self.assertEqual(common.virtualenv(pl=pl, segment_info=segment_info), None)
 
+	def test_environment(self):
+		pl = Pl()
+		variable = 'FOO';
+		value = 'bar';
+		with replace_env(variable, value) as segment_info:
+			self.assertEqual(common.environment(pl=pl, segment_info=segment_info, variable=variable), value)
+			segment_info['environ'].pop(variable)
+			self.assertEqual(common.environment(pl=pl, segment_info=segment_info, variable=variable), None)
+
 	def test_email_imap_alert(self):
 		# TODO
 		pass
@@ -454,15 +465,17 @@ class TestVim(TestCase):
 		pl = Pl()
 		with vim_module._with('buffer', '/foo') as segment_info:
 			with replace_attr(vim, 'guess', lambda path: Args(branch=lambda: os.path.basename(path), status=lambda: None, directory=path)):
-				self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=False),
-						[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch'], 'contents': 'foo'}])
-				self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=True),
-						[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch_clean', 'branch'], 'contents': 'foo'}])
+				with replace_attr(vim, 'tree_status', lambda repo, pl: None):
+					self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=False),
+							[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch'], 'contents': 'foo'}])
+					self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=True),
+							[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch_clean', 'branch'], 'contents': 'foo'}])
 			with replace_attr(vim, 'guess', lambda path: Args(branch=lambda: os.path.basename(path), status=lambda: 'DU', directory=path)):
-				self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=False),
-						[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch'], 'contents': 'foo'}])
-				self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=True),
-						[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch_dirty', 'branch'], 'contents': 'foo'}])
+				with replace_attr(vim, 'tree_status', lambda repo, pl: 'DU'):
+					self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=False),
+							[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch'], 'contents': 'foo'}])
+					self.assertEqual(vim.branch(pl=pl, segment_info=segment_info, status_colors=True),
+							[{'divider_highlight_group': 'branch:divider', 'highlight_group': ['branch_dirty', 'branch'], 'contents': 'foo'}])
 
 	def test_file_vcs_status(self):
 		pl = Pl()

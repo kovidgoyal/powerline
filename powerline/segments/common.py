@@ -11,7 +11,7 @@ from multiprocessing import cpu_count as _cpu_count
 
 from powerline.lib import add_divider_highlight_group
 from powerline.lib.url import urllib_read, urllib_urlencode
-from powerline.lib.vcs import guess
+from powerline.lib.vcs import guess, tree_status
 from powerline.lib.threaded import ThreadedSegment, KwThreadedSegment, with_docstring
 from powerline.lib.monotonic import monotonic
 from powerline.lib.humanize_bytes import humanize_bytes
@@ -20,6 +20,16 @@ from collections import namedtuple
 
 
 cpu_count = None
+
+
+@requires_segment_info
+def environment(pl, segment_info, variable=None):
+	'''Return the value of any defined environment variable
+
+	:param string variable:
+		The environment variable to return if found
+	'''
+	return segment_info['environ'].get(variable, None)
 
 
 @requires_segment_info
@@ -43,7 +53,7 @@ def branch(pl, segment_info, status_colors=True):
 	'''Return the current VCS branch.
 
 	:param bool status_colors:
-		determines whether repository status will be used to determine highlighting. Default: True.
+		determines whether repository status will be used to determine highlighting. Default: False.
 
 	Highlight groups used: ``branch_clean``, ``branch_dirty``, ``branch``.
 	'''
@@ -53,7 +63,6 @@ def branch(pl, segment_info, status_colors=True):
 		branch = repo.branch()
 		scol = ['branch']
 		if status_colors:
-			from powerline.lib.vcs import tree_status
 			status = tree_status(repo, pl)
 			scol.insert(0, 'branch_dirty' if status and status.strip() else 'branch_clean')
 		return [{
@@ -325,7 +334,7 @@ class WeatherSegment(ThreadedSegment):
 		import json
 
 		if not self.url:
-			# Do not lock attribute assignments in this branch: they are used
+			# Do not lock attribute assignments in this branch: they are used 
 			# only in .update()
 			if not self.location:
 				location_data = json.loads(urllib_read('http://freegeoip.net/json/' + _external_ip()))
@@ -418,12 +427,12 @@ weather conditions.
 :param str temp_format:
 	format string, receives ``temp`` as an argument. Should also hold unit.
 :param float temp_coldest:
-	coldest temperature. Any temperature below it will have gradient level equal
+	coldest temperature. Any temperature below it will have gradient level equal 
 	to zero.
 :param float temp_hottest:
-	hottest temperature. Any temperature above it will have gradient level equal
-	to 100. Temperatures between ``temp_coldest`` and ``temp_hottest`` receive
-	gradient level that indicates relative position in this interval
+	hottest temperature. Any temperature above it will have gradient level equal 
+	to 100. Temperatures between ``temp_coldest`` and ``temp_hottest`` receive 
+	gradient level that indicates relative position in this interval 
 	(``100 * (cur-coldest) / (hottest-coldest)``).
 
 Divider highlight group used: ``background:divider``.
@@ -443,17 +452,17 @@ def system_load(pl, format='{avg:.1f}', threshold_good=1, threshold_bad=2, track
 	:param str format:
 		format string, receives ``avg`` as an argument
 	:param float threshold_good:
-		threshold for gradient level 0: any normalized load average below this
+		threshold for gradient level 0: any normalized load average below this 
 		value will have this gradient level.
 	:param float threshold_bad:
-		threshold for gradient level 100: any normalized load average above this
-		value will have this gradient level. Load averages between
-		``threshold_good`` and ``threshold_bad`` receive gradient level that
+		threshold for gradient level 100: any normalized load average above this 
+		value will have this gradient level. Load averages between 
+		``threshold_good`` and ``threshold_bad`` receive gradient level that 
 		indicates relative position in this interval:
 		(``100 * (cur-good) / (bad-good)``).
 		Note: both parameters are checked against normalized load averages.
 	:param bool track_cpu_count:
-		if True powerline will continuously poll the system to detect changes
+		if True powerline will continuously poll the system to detect changes 
 		in the number of CPUs.
 
 	Divider highlight group used: ``background:divider``.
@@ -611,7 +620,7 @@ elif 'psutil' in globals():
 	from time import time
 
 	def _get_uptime():  # NOQA
-		# psutil.BOOT_TIME is not subject to clock adjustments, but time() is.
+		# psutil.BOOT_TIME is not subject to clock adjustments, but time() is. 
 		# Thus it is a fallback to /proc/uptime reading and not the reverse.
 		return int(time() - psutil.BOOT_TIME)
 else:
@@ -620,7 +629,7 @@ else:
 
 
 @add_divider_highlight_group('background:divider')
-def uptime(pl, days_format='{days:d}d', hours_format=' {hours:d}h', minutes_format=' {minutes:d}m', seconds_format=' {seconds:d}s', shorten_len=2):
+def uptime(pl, days_format='{days:d}d', hours_format=' {hours:d}h', minutes_format=' {minutes:d}m', seconds_format=' {seconds:d}s', shorten_len=3):
 	'''Return system uptime.
 
 	:param str days_format:
@@ -763,10 +772,10 @@ falls back to reading
 :param str sent_format:
 	format string, receives ``value`` as argument
 :param float recv_max:
-	maximum number of received bytes per second. Is only used to compute
+	maximum number of received bytes per second. Is only used to compute 
 	gradient level
 :param float sent_max:
-	maximum number of sent bytes per second. Is only used to compute gradient
+	maximum number of sent bytes per second. Is only used to compute gradient 
 	level
 
 Divider highlight group used: ``background:divider``.
@@ -838,8 +847,8 @@ email_imap_alert = with_docstring(EmailIMAPSegment(),
 :param str folder:
 	folder to check for e-mails
 :param int max_msgs:
-	Maximum number of messages. If there are more messages then max_msgs then it
-	will use gradient level equal to 100, otherwise gradient level is equal to
+	Maximum number of messages. If there are more messages then max_msgs then it 
+	will use gradient level equal to 100, otherwise gradient level is equal to 
 	``100 * msgs_num / max_msgs``. If not present gradient is not computed.
 
 Highlight groups used: ``email_alert_gradient`` (gradient), ``email_alert``.
