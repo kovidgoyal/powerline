@@ -2,7 +2,6 @@
 
 import os
 import re
-import errno
 
 from powerline.lib.vcs import get_branch_name as _get_branch_name, get_file_status
 
@@ -46,7 +45,6 @@ def do_status(directory, path, func):
 def ignore_event(path, name):
 	# Ignore changes to the index.lock file, since they happen frequently and
 	# dont indicate an actual change in the working tree status
-	return False
 	return path.endswith('.git') and name == 'index.lock'
 
 try:
