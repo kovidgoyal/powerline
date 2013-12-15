@@ -43,6 +43,10 @@ def do_status(directory, path, func):
 	return func(directory, path)
 
 def ignore_event(path, name):
+	# We cannot ignore changes to index.lock, as in some circumstances
+	# (that I dont have the time to investigate right now) it causes
+	# working tree dirty status to be reported incorrectly
+	return False
 	# Ignore changes to the index.lock file, since they happen frequently and
 	# dont indicate an actual change in the working tree status
 	return path.endswith('.git') and name == 'index.lock'
