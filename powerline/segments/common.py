@@ -516,7 +516,7 @@ try:
 				yield interface, data.bytes_recv, data.bytes_sent
 
 	def _get_user(segment_info):
-		return psutil.Process(os.getpid()).username
+		return psutil.Process(os.getpid()).username()
 
 	class CPULoadPercentSegment(ThreadedSegment):
 		interval = 1
