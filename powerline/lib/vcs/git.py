@@ -42,17 +42,24 @@ def do_status(directory, path, func):
 			path, '.gitignore', func, extra_ignore_files=tuple(os.path.join(gitd, x) for x in ('logs/HEAD', 'info/exclude')))
 	return func(directory, path)
 
+has_pygit = False
 def ignore_event(path, name):
 	# We cannot ignore changes to index.lock, as in some circumstances
 	# (that I dont have the time to investigate right now) it causes
-	# working tree dirty status to be reported incorrectly
-	return False
+	# working tree dirty status to be reported incorrectly. Note that if
+	# you do not have the pygit package installed, this module will
+	# fallback to using the git command line client, in which case the
+	# branch status segment will itself cause inotify events for
+	# index.lock, breaking the functionality, as git modifies index.lock
+	# when it is run. There we enable this for that case, even though it
+	# might cause inaccurate results.
 	# Ignore changes to the index.lock file, since they happen frequently and
 	# dont indicate an actual change in the working tree status
-	return path.endswith('.git') and name == 'index.lock'
+	return not has_pygit and path.endswith('.git') and name == 'index.lock'
 
 try:
 	import pygit2 as git
+	has_pygit = True
 
 	class Repository(object):
 		__slots__ = ('directory', 'ignore_event')
