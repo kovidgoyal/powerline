@@ -42,150 +42,55 @@ def do_status(directory, path, func):
 			path, '.gitignore', func, extra_ignore_files=tuple(os.path.join(gitd, x) for x in ('logs/HEAD', 'info/exclude')))
 	return func(directory, path)
 
-has_pygit = False
-def ignore_event(path, name):
-	# We cannot ignore changes to index.lock, as in some circumstances
-	# (that I dont have the time to investigate right now) it causes
-	# working tree dirty status to be reported incorrectly. Note that if
-	# you do not have the pygit package installed, this module will
-	# fallback to using the git command line client, in which case the
-	# branch status segment will itself cause inotify events for
-	# index.lock, breaking the functionality, as git modifies index.lock
-	# when it is run. There we enable this for that case, even though it
-	# might cause inaccurate results.
-	# Ignore changes to the index.lock file, since they happen frequently and
-	# dont indicate an actual change in the working tree status
-	return not has_pygit and path.endswith('.git') and name == 'index.lock'
+from subprocess import Popen, PIPE
 
-try:
-	import pygit2 as git
-	has_pygit = True
+def readlines(cmd, cwd):
+	p = Popen(cmd, shell=False, stdout=PIPE, stderr=PIPE, cwd=cwd)
+	p.stderr.close()
+	with p.stdout:
+		for line in p.stdout:
+			yield line[:-1].decode('utf-8')
 
-	class Repository(object):
-		__slots__ = ('directory', 'ignore_event')
+def gitcmd(directory, *args):
+	return readlines(('git',) + args, directory)
 
-		def __init__(self, directory):
-			self.directory = os.path.abspath(directory)
-			self.ignore_event = ignore_event
+class Repository(object):
+	__slots__ = ('directory', 'ignore_event')
 
-		def do_status(self, directory, path):
-			if path:
-				try:
-					status = git.Repository(directory).status_file(path)
-				except (KeyError, ValueError):
-					return None
+	def __init__(self, directory):
+		self.directory = os.path.abspath(directory)
 
-				if status == git.GIT_STATUS_CURRENT:
-					return None
-				else:
-					if status & git.GIT_STATUS_WT_NEW:
-						return '??'
-					if status & git.GIT_STATUS_IGNORED:
-						return '!!'
+	def ignore_event(self, path, name):
+		return path.endswith('.git') and name == 'index.lock'
 
-					if status & git.GIT_STATUS_INDEX_NEW:
-						index_status = 'A'
-					elif status & git.GIT_STATUS_INDEX_DELETED:
-						index_status = 'D'
-					elif status & git.GIT_STATUS_INDEX_MODIFIED:
-						index_status = 'M'
-					else:
-						index_status = ' '
+	def do_status(self, directory, path):
+		if path:
+			try:
+				return next(gitcmd(directory, 'status', '--porcelain', '--ignored', '--', path))[:2]
+			except StopIteration:
+				return None
+		else:
+			wt_column = ' '
+			index_column = ' '
+			untracked_column = ' '
+			for line in gitcmd(directory, 'status', '--porcelain'):
+				if line[0] == '?':
+					untracked_column = 'U'
+					continue
+				elif line[0] == '!':
+					continue
 
-					if status & git.GIT_STATUS_WT_DELETED:
-						wt_status = 'D'
-					elif status & git.GIT_STATUS_WT_MODIFIED:
-						wt_status = 'M'
-					else:
-						wt_status = ' '
+				if line[0] != ' ':
+					index_column = 'I'
 
-					return index_status + wt_status
-			else:
-				wt_column = ' '
-				index_column = ' '
-				untracked_column = ' '
-				for status in git.Repository(directory).status().values():
-					if status & git.GIT_STATUS_WT_NEW:
-						untracked_column = 'U'
-						continue
+				if line[1] != ' ':
+					wt_column = 'D'
 
-					if status & (git.GIT_STATUS_WT_DELETED
-							| git.GIT_STATUS_WT_MODIFIED):
-						wt_column = 'D'
+			r = wt_column + index_column + untracked_column
+			return r if r != '   ' else None
 
-					if status & (git.GIT_STATUS_INDEX_NEW
-							| git.GIT_STATUS_INDEX_MODIFIED
-							| git.GIT_STATUS_INDEX_DELETED):
-						index_column = 'I'
-				r = wt_column + index_column + untracked_column
-				return r if r != '   ' else None
+	def status(self, path=None):
+		return do_status(self.directory, path, self.do_status)
 
-		def status(self, path=None):
-			'''Return status of repository or file.
-
-			Without file argument: returns status of the repository:
-
-			:First column: working directory status (D: dirty / space)
-			:Second column: index status (I: index dirty / space)
-			:Third column: presence of untracked files (U: untracked files / space)
-			:None: repository clean
-
-			With file argument: returns status of this file. Output is
-			equivalent to the first two columns of "git status --porcelain"
-			(except for merge statuses as they are not supported by libgit2).
-			'''
-			return do_status(self.directory, path, self.do_status)
-
-		def branch(self):
-			return get_branch_name(self.directory)
-except ImportError:
-	from subprocess import Popen, PIPE
-
-	def readlines(cmd, cwd):
-		p = Popen(cmd, shell=False, stdout=PIPE, stderr=PIPE, cwd=cwd)
-		p.stderr.close()
-		with p.stdout:
-			for line in p.stdout:
-				yield line[:-1].decode('utf-8')
-
-	class Repository(object):
-		__slots__ = ('directory', 'ignore_event')
-
-		def __init__(self, directory):
-			self.directory = os.path.abspath(directory)
-			self.ignore_event = ignore_event
-
-		def _gitcmd(self, directory, *args):
-			return readlines(('git',) + args, directory)
-
-		def do_status(self, directory, path):
-			if path:
-				try:
-					return next(self._gitcmd(directory, 'status', '--porcelain', '--ignored', '--', path))[:2]
-				except StopIteration:
-					return None
-			else:
-				wt_column = ' '
-				index_column = ' '
-				untracked_column = ' '
-				for line in self._gitcmd(directory, 'status', '--porcelain'):
-					if line[0] == '?':
-						untracked_column = 'U'
-						continue
-					elif line[0] == '!':
-						continue
-
-					if line[0] != ' ':
-						index_column = 'I'
-
-					if line[1] != ' ':
-						wt_column = 'D'
-
-				r = wt_column + index_column + untracked_column
-				return r if r != '   ' else None
-
-		def status(self, path=None):
-			return do_status(self.directory, path, self.do_status)
-
-		def branch(self):
-			return get_branch_name(self.directory)
+	def branch(self):
+		return get_branch_name(self.directory)
