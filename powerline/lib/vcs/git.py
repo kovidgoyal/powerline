@@ -2,6 +2,8 @@
 
 import os
 import re
+import sys
+from functools import partial
 
 from powerline.lib.vcs import get_branch_name as _get_branch_name, get_file_status
 
@@ -43,6 +45,10 @@ def do_status(directory, path, func):
 	return func(directory, path)
 
 from subprocess import Popen, PIPE
+if 'win32' in sys.platform.lower():
+	# Prevent windows from launching consoles when calling git.exe
+	# http://msdn.microsoft.com/en-us/library/windows/desktop/ms684863(v=vs.85).aspx
+	Popen = partial(Popen, creationflags=0x08000000)
 
 def readlines(cmd, cwd):
 	p = Popen(cmd, shell=False, stdout=PIPE, stderr=PIPE, cwd=cwd)
